@@ -39,7 +39,7 @@ Synopsis
                     return
                 end
 
-                ok, err = g:submit_job("wc", "11111\n22222\n33333")  
+                ok, err = gm:submit_job("wc", "11111\n22222\n33333")  
                 -- submit_job,submit_job_bg,submit_job_high,submit_job_high_bg,submit_job_low,submit_job_low_bg are supported
                 -- submit_job(function_name, workload, [unique])
                 
