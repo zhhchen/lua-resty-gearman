@@ -2,6 +2,7 @@
 
 local sub = string.sub
 local tcp = ngx.socket.tcp
+local sleep = ngx.sleep
 local insert = table.insert
 local concat = table.concat
 local foreach = table.foreach
@@ -17,7 +18,7 @@ local binstr = {'\0','\1','\2','\3','\4','\5','\6','\7','\8','\9','\10','\11','\
 
 module(...)
 
-_VERSION = '0.01'
+_VERSION = '0.02'
 
 local commands = {
     submit_job='\0\0\0\7',submit_job_bg='\0\0\0\18',
@@ -107,34 +108,58 @@ local function _read_reply(sock,cmd)
 
     local prefix = sub(line, 1, 4)
     local ptype = sub(line, 8, 8)
-    local hidlen = StringBytesToNumber(sub(line,9,12))
-    if prefix == '\0RES' and ptype == '\8' then
+    local hidlenbin = sub(line,9,12)
+    local hidlen = StringBytesToNumber(hidlenbin)
+    if prefix == '\0RES' and ptype == '\8' then -- 8   JOB_CREATED
         local handleid, err = sock:receive(hidlen)
         if not handleid then
             return nil, err
         end
 
-        if cmd == '\0\0\0\7' or cmd == '\0\0\0\21' or cmd == '\0\0\0\33' then
-            local line, err = sock:receive(12)
-            if not line then
-                return nil, err
-            end
+        if cmd == '\0\0\0\7' or cmd == '\0\0\0\21' or cmd == '\0\0\0\33' then -- Not Backgroud Job
+            local resdata = {}
+            repeat
+                local req = {'\0REQ', '\0\0\0\15', hidlenbin, handleid} -- 15  GET_STATUS
+                local bytes, err = sock:send(concat(req, ""))
+                if not bytes then
+                    return nil, err
+                end
 
-            local prefix1 = sub(line, 1, 4)
-            local ptype1 = sub(line, 8, 8)
-            local datalen = StringBytesToNumber(sub(line,9,12))
-            if prefix1 == '\0RES' and ptype1 == '\13' then
+                local line, err = sock:receive(12)
+                if not line then
+                    return nil, err
+                end
+
+                local prefix = sub(line, 1, 4)
+                local ptype = sub(line, 8, 8)
+                local datalen = StringBytesToNumber(sub(line,9,12))
                 local data, err = sock:receive(datalen)
                 if not data then
                     return nil, err
                 end
 
-                local resstr = sub(data, hidlen+2, datalen)
+                if prefix == '\0RES' and ptype == '\13' then -- 13  WORK_COMPLETE
+                    insert(resdata,sub(data, hidlen+2, datalen))
+                elseif prefix == '\0RES' and ptype == '\14' then -- 14  WORK_FAIL
+                    return nil, "WORK FAIL"
+                elseif prefix == '\0RES' and ptype == '\25' then -- 25  WORK_EXCEPTION
+                    return nil, "WORK EXCEPTION"
+                elseif prefix == '\0RES' and ptype == '\28' then -- 28  WORK_DATA
+                    insert(resdata,sub(data, hidlen+2, datalen))
+                elseif prefix == '\0RES' and ptype == '\29' then -- 29  WORK_WARNING
+                    return nil, "WORK WARNING"
+                elseif prefix == '\0RES' and ptype == '\20' then -- 20  STATUS_RES
+                    -- sleep(1)
+                elseif prefix == '\0RES' and ptype == '\12' then -- 12  WORK_STATUS
+                    -- sleep(1)
+                else
+                    return nil, "response error"
+                end
+            until prefix == '\0RES' and ptype == '\13'
 
-                return resstr
-            else
-                return nil, "worker response error"
-            end
+            local resstr = concat(resdata, "")
+
+            return resstr
         else
             return handleid
         end
