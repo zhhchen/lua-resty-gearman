@@ -1,5 +1,6 @@
 -- Copyright (C) 2012 Zhihua Chen (zhhchen)
 
+local now = ngx.now
 local sub = string.sub
 local tcp = ngx.socket.tcp
 local sleep = ngx.sleep
@@ -118,7 +119,7 @@ local function _read_reply(sock,cmd)
 
         if cmd == '\0\0\0\7' or cmd == '\0\0\0\21' or cmd == '\0\0\0\33' then -- Not Backgroud Job
             local resdata = {}
-            local time0 = ngx.now()
+            local time0 = now()
             repeat
                 local req = {'\0REQ', '\0\0\0\15', hidlenbin, handleid} -- 15  GET_STATUS
                 local bytes, err = sock:send(concat(req, ""))
