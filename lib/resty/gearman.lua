@@ -118,6 +118,7 @@ local function _read_reply(sock,cmd)
 
         if cmd == '\0\0\0\7' or cmd == '\0\0\0\21' or cmd == '\0\0\0\33' then -- Not Backgroud Job
             local resdata = {}
+            local time0 = ngx.now()
             repeat
                 local req = {'\0REQ', '\0\0\0\15', hidlenbin, handleid} -- 15  GET_STATUS
                 local bytes, err = sock:send(concat(req, ""))
@@ -149,8 +150,14 @@ local function _read_reply(sock,cmd)
                 elseif prefix == '\0RES' and ptype == '\29' then -- 29  WORK_WARNING
                     return nil, "WORK WARNING"
                 elseif prefix == '\0RES' and ptype == '\20' then -- 20  STATUS_RES
+                    if (ngx.now()-time0) > 5 then
+                        return nil, "time out"
+                    end
                     -- sleep(1)
                 elseif prefix == '\0RES' and ptype == '\12' then -- 12  WORK_STATUS
+                    if (ngx.now()-time0) > 5 then
+                        return nil, "time out"
+                    end
                     -- sleep(1)
                 else
                     return nil, "response error"
