@@ -151,12 +151,12 @@ local function _read_reply(sock,cmd)
                 elseif prefix == '\0RES' and ptype == '\29' then -- 29  WORK_WARNING
                     return nil, "WORK WARNING"
                 elseif prefix == '\0RES' and ptype == '\20' then -- 20  STATUS_RES
-                    if (ngx.now()-time0) > 5 then
+                    if (now()-time0) > 5 then
                         return nil, "time out"
                     end
                     -- sleep(1)
                 elseif prefix == '\0RES' and ptype == '\12' then -- 12  WORK_STATUS
-                    if (ngx.now()-time0) > 5 then
+                    if (now()-time0) > 5 then
                         return nil, "time out"
                     end
                     -- sleep(1)
